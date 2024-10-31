@@ -7,9 +7,9 @@ interface PurchaseAttrs {
   purchaseDate: Date;
   totalPrice: number;
   products: Array<{
-    product: string;
+    product: mongoose.Types.ObjectId;
     quantity: number;
-    totalPrice: number;
+    totalPrice?: number;
   }>;
 }
 
@@ -19,9 +19,9 @@ interface PurshaseDoc extends mongoose.Document {
   purchaseDate: Date;
   totalPrice: number;
   products: Array<{
-    product: string;
+    product: mongoose.Types.ObjectId;
     quantity: number;
-    totalPrice: number;
+    totalPrice?: number;
   }>;
 }
 

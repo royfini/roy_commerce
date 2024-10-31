@@ -18,6 +18,10 @@ export const addProduct = async (req: Request, res: Response) => {
     }
 
     //check if name exist
+    const existingProduct = await Product.findOne({ where: { name } })
+    if (existingProduct) {
+        throw new Error('Product already exist')
+    }
 
     const product = Product.build({
         name,
