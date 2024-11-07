@@ -52,7 +52,7 @@ export default function Purshase() {
       <button onClick={handleAddClick}>Add</button>
       <ul>
         {products.map((product) => (
-          <li key={product.product}>{product.quantity}</li>
+          <li key={product.product}>{product.product.name+ ' ' + product.quantity}</li>
         ))}
       </ul>
     </div>

@@ -12,13 +12,13 @@ import { errorHandler } from "./middlewares/error-handler";
 import { purchaseRouter } from "./routes/purshase";
 
 const app = express();
-app.use(cors())
+app.use(cors());
 app.use(json());
 app.use("/product", productRouter);
 app.use("/category", categoryRouter);
 app.use("/brand", brandRouter);
 app.use("/supplier", supplierRouter);
-app.use('/purchase', purchaseRouter);
+app.use("/purchase", purchaseRouter);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -29,6 +29,10 @@ const io = new Server(server, {
 
 io.on("connection", (socket) => {
   console.log("A user connected:", socket.id);
+
+  //Create a private room for the client
+  // const privateRoomId = `private_${socket.id}`;
+  // socket.join(privateRoomId);
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
