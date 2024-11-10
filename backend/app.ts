@@ -10,15 +10,30 @@ import { brandRouter } from "./routes/brand";
 import { supplierRouter } from "./routes/supplier";
 import { errorHandler } from "./middlewares/error-handler";
 import { purchaseRouter } from "./routes/purshase";
+import { userRouter } from "./routes/user";
+import cookieSession from "cookie-session";
+import { currentUser } from "./middlewares/current-user";
 
 const app = express();
-app.use(cors());
+app.use(
+  cors({
+    origin: "http://localhost:3001", // Replace with your client's origin
+    credentials: true, // Allow credentials (cookies, authorization headers, etc.)
+  })
+);
 app.use(json());
+app.use(
+  cookieSession({
+    signed: false,
+  })
+);
+app.use(currentUser);
 app.use("/product", productRouter);
 app.use("/category", categoryRouter);
 app.use("/brand", brandRouter);
 app.use("/supplier", supplierRouter);
 app.use("/purchase", purchaseRouter);
+app.use("/user", userRouter);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -28,11 +43,11 @@ const io = new Server(server, {
 });
 
 io.on("connection", (socket) => {
-  console.log("A user connected:", socket.id);
+  console.log("A user connected", socket.id);
 
-  //Create a private room for the client
-  // const privateRoomId = `private_${socket.id}`;
-  // socket.join(privateRoomId);
+  socket.on('joinPrivateRoom',(roomId)=>{
+    socket.join(roomId);
+  })
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);

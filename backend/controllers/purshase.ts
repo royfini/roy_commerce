@@ -32,8 +32,6 @@ const addSupplierToPurchase = async (req: Request, res: Response) => {
 const addProductToPurhase = async (req: Request, res: Response) => {
   const { productId } = req.body;
 
-  //get use id (in normal we get it from token middleware req.id)
-
   //check if product exist
   const product = await Product.findById(productId);
   if (!product) {
@@ -60,10 +58,15 @@ const addProductToPurhase = async (req: Request, res: Response) => {
   }
 
   await purshase.save();
- 
-  const populatedPurshase = await purshase.populate('products.product');
-  //io.to(req.user.id).emit("productAddedTopurshase", populatedPurshase.products);
-  io.emit("productAddedTopurshase", populatedPurshase.products);
+
+  const populatedPurshase = await purshase.populate("products.product");
+  if (req.currentUser) {
+    console.log(req.currentUser.id);
+    io.to(`private-room-${req.currentUser.id}`).emit(
+      "productAddedToPurshase",
+      populatedPurshase.products
+    );
+  }
   res.send("Product added to purshase");
 };
 
