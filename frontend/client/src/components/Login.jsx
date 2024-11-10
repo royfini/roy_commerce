@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   useEffect(() => {}, []);
 
+  const navigate = useNavigate();
   const handleAddClick = async (e) => {
     e.preventDefault();
     try {
@@ -18,6 +20,9 @@ export default function Login() {
       });
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      if (response.ok) {
+        navigate("/purchase");
       }
     } catch (error) {
       console.error("Error:", error);
