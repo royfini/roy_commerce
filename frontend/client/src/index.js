@@ -4,6 +4,7 @@ import "./index.css";
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
 import Purchase from "./components/Purshase"; // Import the Purchase component
+import CreatePurchase from "./components/CreatePurchase";
 import {
   createBrowserRouter,
   createRoutesFromElements,
@@ -16,7 +17,8 @@ const router = createBrowserRouter(
   createRoutesFromElements(
     <>
       <Route path="/" element={<App />} />
-      <Route path="/purchase" element={<Purchase />} />
+      <Route path="/purchase/:id" element={<Purchase />} />
+      <Route path="/purchases" element={<CreatePurchase />} />
     </>
   )
 );

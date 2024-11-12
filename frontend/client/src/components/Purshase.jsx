@@ -1,28 +1,38 @@
 import React, { useEffect, useState, useRef } from "react";
 import { io } from "socket.io-client";
+import { useParams } from "react-router-dom";
 
 export default function Purshase() {
   const [productId, setProductId] = useState("");
   const [products, setProducts] = useState([]);
-
+  const { id } = useParams();
   let socket = useRef(null);
   useEffect(() => {
     // Fetch the user ID
     const fetchUserId = async () => {
       try {
-        const response = await fetch("http://localhost:3000/user",{credentials: "include"});
+        const response = await fetch("http://localhost:3000/user", {
+          credentials: "include",
+        });
+        const response1 = await fetch(
+          `http://localhost:3000/purchase/get-all-product/${id}`,
+          {
+            credentials: "include",
+          }
+        );
+        const products = await response1.json();
         const data = await response.json();
-        let id = data.id;
+        let userId = data.id;
+        setProducts(products);
         // Initialize socket connection
         socket.current = io("http://localhost:3000");
         socket.current.on("connect", () => {
           console.log("Connected to server");
           // Join the room based on user ID
-          console.log(`private-room-${id}`);
-          socket.current.emit("joinPrivateRoom", `private-room-${id}`);
+          console.log(`private-room-${userId}`);
+          socket.current.emit("joinPrivateRoom", `private-room-${userId}`);
         });
         socket.current.on("productAddedToPurshase", (data) => {
-          console.log(data);
           setProducts(data);
         });
       } catch (error) {
@@ -39,22 +49,66 @@ export default function Purshase() {
         socket.current.disconnect();
       }
     };
-  }, []);
+  }, [id]);
 
   const handleAddClick = async (e) => {
     e.preventDefault();
     try {
-      await fetch(
-        "http://localhost:3000/purchase/add-product/67234725c131fbaa2a65e4e6",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ productId: productId }),
-          credentials: "include", // Include credentials to allow cookies
-        }
-      );
+      await fetch(`http://localhost:3000/purchase/add-product/${id}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ productId: productId }),
+        credentials: "include", // Include credentials to allow cookies
+      });
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  const handlePlusClick = async (e) => {
+    e.preventDefault();
+    try {
+      await fetch(``, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ productId: productId }),
+        credentials: "include", // Include credentials to allow cookies
+      });
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+  const handleMinusClick = async (e) => {
+    e.preventDefault();
+    try {
+      await fetch(``, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ productId: productId }),
+        credentials: "include", // Include credentials to allow cookies
+      });
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  const handleSaveClick = async (e) => {
+    e.preventDefault();
+    try {
+      await fetch(``, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ productId: productId }),
+        credentials: "include", // Include credentials to allow cookies
+      });
     } catch (error) {
       console.error("Error:", error);
     }
@@ -72,10 +126,13 @@ export default function Purshase() {
       <ul>
         {products.map((product) => (
           <li key={product.product}>
-            {product.product.name + " " + product.quantity}
+            {product.product.name + " " + product.quantity + " " + product.id}
+            <button onClick={()=>handleAddClick(product.product.id)}>-</button>
+            <button>+</button>
           </li>
         ))}
       </ul>
+      <button>Save</button>
     </div>
   );
 }

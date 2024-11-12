@@ -27,19 +27,29 @@ interface PurshaseDoc extends mongoose.Document {
 
 interface PurshaseModel extends mongoose.Model<PurshaseDoc> {}
 
-const purchaseSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  supplier: { type: mongoose.Schema.Types.ObjectId, ref: "Supplier" },
-  purchaseDate: { type: Date },
-  totalPrice: { type: Number },
-  products: [
-    {
-      product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
-      quantity: { type: Number },
-      totalPrice: { type: Number },
+const purchaseSchema = new mongoose.Schema(
+  {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    supplier: { type: mongoose.Schema.Types.ObjectId, ref: "Supplier" },
+    purchaseDate: { type: Date },
+    totalPrice: { type: Number },
+    products: [
+      {
+        product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+        quantity: { type: Number },
+        totalPrice: { type: Number },
+      },
+    ],
+  },
+  {
+    toJSON: {
+      transform(doc, ret) {
+        ret.id = ret._id;
+        delete ret._id;
+      },
     },
-  ],
-});
+  }
+);
 
 const Purshase = mongoose.model<PurshaseDoc, PurshaseModel>(
   "Purshase",

@@ -22,7 +22,7 @@ export default function Login() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       if (response.ok) {
-        navigate("/purchase");
+        navigate("/purchases");
       }
     } catch (error) {
       console.error("Error:", error);
