@@ -35,6 +35,12 @@ export default function Purshase() {
         socket.current.on("productAddedToPurshase", (data) => {
           setProducts(data);
         });
+        socket.current.on("productPlusToPurshase", (data) => {
+          setProducts(data);
+        });
+        socket.current.on("productRemoveFromPurshase", (data) => {
+          setProducts(data);
+        });
       } catch (error) {
         console.error("Failed to fetch user ID:", error);
       }
@@ -67,30 +73,30 @@ export default function Purshase() {
     }
   };
 
-  const handlePlusClick = async (e) => {
+  const handlePlusClick = async (e, Idproduct) => {
     e.preventDefault();
     try {
-      await fetch(``, {
+      await fetch(`http://localhost:3000/purchase/add-product-qty/${id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ productId: productId }),
+        body: JSON.stringify({ productId:  Idproduct}),
         credentials: "include", // Include credentials to allow cookies
       });
     } catch (error) {
       console.error("Error:", error);
     }
   };
-  const handleMinusClick = async (e) => {
+  const handleMinusClick = async (e, Idproduct) => {
     e.preventDefault();
     try {
-      await fetch(``, {
+      await fetch(`http://localhost:3000/purchase/remove-product-qty/${id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ productId: productId }),
+        body: JSON.stringify({ productId:  Idproduct}),
         credentials: "include", // Include credentials to allow cookies
       });
     } catch (error) {
@@ -101,12 +107,11 @@ export default function Purshase() {
   const handleSaveClick = async (e) => {
     e.preventDefault();
     try {
-      await fetch(``, {
+      await fetch(`http://localhost:3000/purchase/save/${id}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ productId: productId }),
         credentials: "include", // Include credentials to allow cookies
       });
     } catch (error) {
@@ -126,13 +131,13 @@ export default function Purshase() {
       <ul>
         {products.map((product) => (
           <li key={product.product}>
-            {product.product.name + " " + product.quantity + " " + product.id}
-            <button onClick={()=>handleAddClick(product.product.id)}>-</button>
-            <button>+</button>
+            {product.product.name + " " + product.quantity}
+            <button onClick={(e)=>handleMinusClick(e,product.product.id)}>-</button>
+            <button onClick={(e)=>handlePlusClick(e,product.product.id)}>+</button>
           </li>
         ))}
       </ul>
-      <button>Save</button>
+      <button onClick={handleSaveClick}>Save</button>
     </div>
   );
 }

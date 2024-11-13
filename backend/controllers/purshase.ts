@@ -5,6 +5,7 @@ import { NotFoundError } from "../errors/not-found-error";
 import { Product } from "../models/product";
 import mongoose from "mongoose";
 import { io } from "../app";
+import { Stock } from "../models/stock";
 
 const createPurchase = async (req: Request, res: Response) => {
   const newPurshase = new Purshase();
@@ -90,9 +91,84 @@ const getAllProductOfPurchase = async (req: Request, res: Response) => {
   res.send(purshase.products);
 };
 
-const addProductQuantity = async (req: Request, res: Response) => {};
+const addProductQuantity = async (req: Request, res: Response) => {
+  const { productId } = req.body;
+  const purshase = await Purshase.findById(req.params.id);
+  if (!purshase) {
+    throw new NotFoundError();
+  }
 
-const removeProductQuantity = async (req: Request, res: Response) => {};
+  const existingProduct = purshase.products.find(
+    (p) => p.product.toString() === productId
+  );
+
+  if (existingProduct) {
+    existingProduct.quantity += 1;
+  } else {
+    throw new NotFoundError();
+  }
+
+  await purshase.save();
+  const populatedPurshase = await purshase.populate("products.product");
+  if (req.currentUser) {
+    io.to(`private-room-${req.currentUser.id}`).emit(
+      "productPlusToPurshase",
+      populatedPurshase.products
+    );
+  }
+  res.send("Product added to purshase");
+};
+
+const removeProductQuantity = async (req: Request, res: Response) => {
+  const { productId } = req.body;
+  const purshase = await Purshase.findById(req.params.id);
+  if (!purshase) {
+    throw new NotFoundError();
+  }
+
+  const existingProduct = purshase.products.find(
+    (p) => p.product.toString() === productId
+  );
+
+  if (existingProduct) {
+    if (existingProduct.quantity > 0) {
+      existingProduct.quantity -= 1;
+    }
+  } else {
+    throw new NotFoundError();
+  }
+
+  await purshase.save();
+  const populatedPurshase = await purshase.populate("products.product");
+  if (req.currentUser) {
+    io.to(`private-room-${req.currentUser.id}`).emit(
+      "productRemoveFromPurshase",
+      populatedPurshase.products
+    );
+  }
+  res.send("Product removed from purshase");
+};
+
+const savePurshase = async (req: Request, res: Response) => {
+  const purshase = await Purshase.findById(req.params.id);
+  if (!purshase) {
+    throw new NotFoundError();
+  }
+
+  for (const product of purshase.products) {
+    const stockProduct = await Stock.findOne({ productId: product.product });
+    if (stockProduct) {
+      stockProduct.quantityInStock += product.quantity;
+      await stockProduct.save();
+    } else {
+      // Handle case where product is not found in stock
+      throw new NotFoundError();
+    }
+  }
+  purshase.purchaseDate = new Date();
+  await purshase.save();
+  res.send("Purshase saved and stock updated");
+};
 
 export {
   createPurchase,
@@ -100,4 +176,7 @@ export {
   addProductToPurhase,
   getAllPurshases,
   getAllProductOfPurchase,
+  addProductQuantity,
+  removeProductQuantity,
+  savePurshase,
 };
