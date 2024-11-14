@@ -24,6 +24,14 @@ const userSchema = new mongoose.Schema({
   password: { type: String },
   role: { type: String, enum: ["admin", "user"], default: "user" },
   verified: { type: Boolean, default: false },
+},
+{
+  toJSON: {
+    transform(doc, ret) {
+      ret.id = ret._id;
+      delete ret._id;
+    },
+  },
 });
 
 userSchema.pre("save", async function (done) {

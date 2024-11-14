@@ -5,9 +5,11 @@ import { Category } from "../models/category";
 import { Product } from "../models/product";
 import { io } from "../app";
 import { Stock } from "../models/stock";
+import { Price } from "../models/price";
 
 export const addProduct = async (req: Request, res: Response) => {
-  const { name, description, categoryId, brandId, image } = req.body;
+  const { name, description, categoryId, brandId, image, sellerPrice } =
+    req.body;
 
   const category = await Category.findById(categoryId);
   if (!category) {
@@ -32,6 +34,14 @@ export const addProduct = async (req: Request, res: Response) => {
     image,
   });
   await product.save();
+
+  const price = Price.build({
+    product: product.id,
+    sellerPrice,
+  });
+
+  await price.save();
+
   // Create and save the stock instance
   const stock = Stock.build({
     productId: product.id,

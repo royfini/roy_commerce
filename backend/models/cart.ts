@@ -1,5 +1,35 @@
 import mongoose from "mongoose";
 
+interface CartAttrs {
+  products: [
+    {
+      product: mongoose.Types.ObjectId;
+      quantity: number;
+      totalPrice: number;
+    }
+  ];
+  totalPrice: number;
+  quantity: number;
+  user: mongoose.Types.ObjectId;
+}
+
+interface CartDoc extends mongoose.Document {
+  products: [
+    {
+      product: mongoose.Types.ObjectId;
+      quantity: number;
+      totalPrice: number;
+    }
+  ];
+  totalPrice: number;
+  quantity: number;
+  user: mongoose.Types.ObjectId;
+}
+
+interface CartModel extends mongoose.Model<CartDoc> {
+  build(attr: CartAttrs): CartDoc;
+}
+
 const cartSchema = new mongoose.Schema({
   products: [
     {
@@ -13,6 +43,10 @@ const cartSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 });
 
-const Cart = mongoose.model("Cart", cartSchema);
+const Cart = mongoose.model<CartDoc, CartModel>("Cart", cartSchema);
+
+cartSchema.statics.build = (attr: CartAttrs) => {
+  return new Cart(attr);
+};
 
 export { Cart };

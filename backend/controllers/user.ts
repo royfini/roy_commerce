@@ -7,7 +7,7 @@ import {
 } from "../services/emailVerification";
 import { Hash } from "../utils/hash";
 import jwt from "jsonwebtoken";
-import { io } from "../app";
+import { Cart } from "../models/cart";
 
 export const createNewUser = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -59,6 +59,13 @@ export const loginUser = async (req: Request, res: Response) => {
   req.session = {
     jwt: userJwt,
   };
+
+  //find if it has cart
+  const existingCart = await Cart.findOne({ user: existingUser.id });
+  if (!existingCart) {
+    //create cart for user
+    await new Cart({ user: existingUser.id }).save();
+  }
 
   res.status(200).send(existingUser);
 };

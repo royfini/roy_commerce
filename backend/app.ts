@@ -13,6 +13,7 @@ import { purchaseRouter } from "./routes/purshase";
 import { userRouter } from "./routes/user";
 import cookieSession from "cookie-session";
 import { currentUser } from "./middlewares/current-user";
+import { cartRouter } from "./routes/cart";
 
 const app = express();
 app.use(
@@ -34,6 +35,7 @@ app.use("/brand", brandRouter);
 app.use("/supplier", supplierRouter);
 app.use("/purchase", purchaseRouter);
 app.use("/user", userRouter);
+app.use("/cart", cartRouter);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -45,9 +47,9 @@ const io = new Server(server, {
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
 
-  socket.on('joinPrivateRoom',(roomId)=>{
+  socket.on("joinPrivateRoom", (roomId) => {
     socket.join(roomId);
-  })
+  });
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
