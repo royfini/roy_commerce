@@ -4,6 +4,7 @@ import { Cart } from "../models/cart";
 import { Product } from "../models/product";
 import { Price } from "../models/price";
 import { io } from "../app";
+import { Stock } from "../models/stock";
 
 const AddProductToCart = async (req: Request, res: Response) => {
   const { productId } = req.body;
@@ -109,6 +110,27 @@ const minusQtyProductOfCart = async (req: Request, res: Response) => {
     );
   }
   res.send("Product removed from cart");
+};
+
+const checkOut = async (req: Request, res: Response) => {
+  const cart = await Cart.findOne({ user: req?.currentUser?.id });
+  if (!cart) {
+    throw new NotFoundError();
+  }
+  for (let i = 0; i < cart.products.length; i++) {
+    const productInStock = await Stock.findOne({
+      product: cart.products[i].product,
+    });
+    if (!productInStock) {
+      throw new NotFoundError();
+    }
+    //check product quantity available in stock
+    if (productInStock.quantityInStock < cart.products[i].quantity) {
+      throw new NotFoundError();
+    }
+    productInStock.quantityInStock -= cart.products[i].quantity;
+    await productInStock.save();
+  }
 };
 
 export { AddProductToCart, addQtyProductOfCart, minusQtyProductOfCart };
