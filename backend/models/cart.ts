@@ -41,6 +41,14 @@ const cartSchema = new mongoose.Schema({
   totalPrice: { type: Number },
   quantity: { type: Number },
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+},
+{
+  toJSON: {
+    transform(doc, ret) {
+      ret.id = ret._id;
+      delete ret._id;
+    },
+  },
 });
 
 const Cart = mongoose.model<CartDoc, CartModel>("Cart", cartSchema);

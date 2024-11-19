@@ -4,6 +4,7 @@ import { body } from "express-validator";
 import {
   AddProductToCart,
   addQtyProductOfCart,
+  checkOut,
   minusQtyProductOfCart,
 } from "../controllers/cart";
 import { requireAuth } from "../middlewares/require-auth";
@@ -32,5 +33,7 @@ cartRouter.post(
   [body("productId").not().isEmpty().withMessage("Product is required")],
   minusQtyProductOfCart
 );
+
+cartRouter.post("/checkout", requireAuth, checkOut);
 
 export { cartRouter };

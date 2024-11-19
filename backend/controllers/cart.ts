@@ -5,6 +5,12 @@ import { Product } from "../models/product";
 import { Price } from "../models/price";
 import { io } from "../app";
 import { Stock } from "../models/stock";
+import { Order } from "../models/order";
+import { expirationQueue } from "../utils/expiration";
+import mongoose from "mongoose";
+import { BadRequestError } from "../errors/bad-request-error";
+
+const EXPIRATION_WINDOW_SECONDS = 0.5 * 60;
 
 const AddProductToCart = async (req: Request, res: Response) => {
   const { productId } = req.body;
@@ -115,22 +121,54 @@ const minusQtyProductOfCart = async (req: Request, res: Response) => {
 const checkOut = async (req: Request, res: Response) => {
   const cart = await Cart.findOne({ user: req?.currentUser?.id });
   if (!cart) {
-    throw new NotFoundError();
+    throw new BadRequestError("Cart not found");
   }
   for (let i = 0; i < cart.products.length; i++) {
     const productInStock = await Stock.findOne({
-      product: cart.products[i].product,
+      productId: cart.products[i].product,
     });
     if (!productInStock) {
-      throw new NotFoundError();
+      throw new BadRequestError("Product not found in stock");
     }
     //check product quantity available in stock
     if (productInStock.quantityInStock < cart.products[i].quantity) {
-      throw new NotFoundError();
+      throw new BadRequestError("Product out of stock");
     }
     productInStock.quantityInStock -= cart.products[i].quantity;
+
+    const expiration = new Date();
+    expiration.setSeconds(expiration.getSeconds() + EXPIRATION_WINDOW_SECONDS);
+    const delay = new Date(expiration).getTime() - new Date().getTime();
+    console.log("Waiting this many milliseconds to process the job", delay);
+
+    if (!req.currentUser) {
+      throw new Error("User not authenticated");
+    }
+    const userId = new mongoose.Types.ObjectId(req.currentUser.id);
+    const order = Order.build({
+      userId: userId,
+      products: cart.products,
+      totalPrice: cart.totalPrice,
+    });
+    await order.save();
+
+    expirationQueue.add(
+      {
+        orderId: order.id,
+      },
+      {
+        delay,
+      }
+    );
+
     await productInStock.save();
+    res.send("checkout successful");
   }
 };
 
-export { AddProductToCart, addQtyProductOfCart, minusQtyProductOfCart };
+export {
+  AddProductToCart,
+  addQtyProductOfCart,
+  minusQtyProductOfCart,
+  checkOut,
+};

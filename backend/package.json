@@ -15,6 +15,7 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22.8.1",
     "@types/nodemailer": "^6.4.16",
+    "bull": "^4.16.4",
     "cookie-session": "^2.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
