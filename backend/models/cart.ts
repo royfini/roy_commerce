@@ -38,7 +38,7 @@ const cartSchema = new mongoose.Schema({
       totalPrice: { type: Number },
     },
   ],
-  totalPrice: { type: Number },
+  totalPrice: { type: Number,default: 0 },
   quantity: { type: Number },
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 },

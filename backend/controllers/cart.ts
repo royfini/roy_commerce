@@ -38,12 +38,14 @@ const AddProductToCart = async (req: Request, res: Response) => {
   if (existingProduct) {
     existingProduct.quantity += 1;
     existingProduct.totalPrice = existingProduct.quantity * sellerPrice;
+    cart.totalPrice = cart.totalPrice + sellerPrice;
   } else {
     cart.products.push({
       product: productId,
       quantity: 1,
       totalPrice: sellerPrice,
     });
+    cart.totalPrice = cart.totalPrice + sellerPrice;
   }
 
   await cart.save();
@@ -69,6 +71,7 @@ const addQtyProductOfCart = async (req: Request, res: Response) => {
   if (existingProduct) {
     existingProduct.quantity += 1;
     existingProduct.totalPrice = existingProduct.quantity * sellerPrice;
+    cart.totalPrice = cart.totalPrice + sellerPrice;
   } else {
     throw new NotFoundError();
   }
@@ -103,6 +106,7 @@ const minusQtyProductOfCart = async (req: Request, res: Response) => {
     if (existingProduct.quantity > 0) {
       existingProduct.quantity -= 1;
       existingProduct.totalPrice = existingProduct.quantity * sellerPrice;
+      cart.totalPrice = cart.totalPrice - sellerPrice;
     }
   } else {
     throw new NotFoundError();
@@ -135,35 +139,34 @@ const checkOut = async (req: Request, res: Response) => {
       throw new BadRequestError("Product out of stock");
     }
     productInStock.quantityInStock -= cart.products[i].quantity;
-
-    const expiration = new Date();
-    expiration.setSeconds(expiration.getSeconds() + EXPIRATION_WINDOW_SECONDS);
-    const delay = new Date(expiration).getTime() - new Date().getTime();
-    console.log("Waiting this many milliseconds to process the job", delay);
-
-    if (!req.currentUser) {
-      throw new Error("User not authenticated");
-    }
-    const userId = new mongoose.Types.ObjectId(req.currentUser.id);
-    const order = Order.build({
-      userId: userId,
-      products: cart.products,
-      totalPrice: cart.totalPrice,
-    });
-    await order.save();
-
-    expirationQueue.add(
-      {
-        orderId: order.id,
-      },
-      {
-        delay,
-      }
-    );
-
     await productInStock.save();
-    res.send("checkout successful");
   }
+  const expiration = new Date();
+  expiration.setSeconds(expiration.getSeconds() + EXPIRATION_WINDOW_SECONDS);
+  const delay = new Date(expiration).getTime() - new Date().getTime();
+  console.log("Waiting this many milliseconds to process the job", delay);
+
+  if (!req.currentUser) {
+    throw new Error("User not authenticated");
+  }
+  const userId = new mongoose.Types.ObjectId(req.currentUser.id);
+  const order = Order.build({
+    userId: userId,
+    products: cart.products,
+    totalPrice: cart.totalPrice,
+  });
+  await order.save();
+
+  expirationQueue.add(
+    {
+      orderId: order.id,
+    },
+    {
+      delay,
+    }
+  );
+
+  res.send("checkout successful");
 };
 
 export {

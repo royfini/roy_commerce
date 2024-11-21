@@ -14,6 +14,7 @@ import { userRouter } from "./routes/user";
 import cookieSession from "cookie-session";
 import { currentUser } from "./middlewares/current-user";
 import { cartRouter } from "./routes/cart";
+import { orderRouter } from "./routes/order";
 
 const app = express();
 app.use(
@@ -36,6 +37,7 @@ app.use("/supplier", supplierRouter);
 app.use("/purchase", purchaseRouter);
 app.use("/user", userRouter);
 app.use("/cart", cartRouter);
+app.use("/order", orderRouter);
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {

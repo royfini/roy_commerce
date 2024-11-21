@@ -63,7 +63,7 @@ const orderSchema = new mongoose.Schema(
         totalPrice: { type: Number },
       },
     ],
-    orderType: { enum: ["Delivery", "In Store Pick up"] },
+    orderType: { type: String, enum: ["Delivery", "In Store Pick up"] },
     deliveryAddress: {
       street: { type: String },
       city: { type: String },
@@ -71,7 +71,7 @@ const orderSchema = new mongoose.Schema(
     },
     totalPrice: { type: Number },
     PaymentMethod: { enum: ["Cash"] },
-    deliveryPrice: { type: Number },
+    deliveryPrice: { type: Number,default: 0 },
     orderStatus: {
       type: String,
       enum: ["Pending", "Processing", "Delivered", "Cancelled", "Completed"],
