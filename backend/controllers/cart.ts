@@ -156,10 +156,11 @@ const checkOut = async (req: Request, res: Response) => {
     totalPrice: cart.totalPrice,
   });
   await order.save();
+  console.log("Order id:"+order.id)
 
-  expirationQueue.add(
+  await expirationQueue.add(
     {
-      orderId: order.id,
+      orderId: order.id, // Payload data
     },
     {
       delay,

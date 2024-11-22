@@ -13,7 +13,6 @@ interface OrderAttrs {
   deliveryAddress?: {
     street: string;
     city: string;
-    phone: string;
   };
   totalPrice?: number;
   PaymentMethod?: string;
@@ -36,7 +35,6 @@ interface OrderDoc extends mongoose.Document {
   deliveryAddress: {
     street: string;
     city: string;
-    phone: string;
   };
   totalPrice: number;
   PaymentMethod: string;
@@ -67,14 +65,14 @@ const orderSchema = new mongoose.Schema(
     deliveryAddress: {
       street: { type: String },
       city: { type: String },
-      phone: { type: String },
     },
     totalPrice: { type: Number },
     PaymentMethod: { enum: ["Cash"] },
     deliveryPrice: { type: Number,default: 0 },
     orderStatus: {
       type: String,
-      enum: ["Pending", "Processing", "Delivered", "Cancelled", "Completed"],
+      enum: ["Pending", 
+        "Confirmed","Processing", "Delivered", "Cancelled", "Completed"],
       default: "Pending",
     },
     placeAt: { type: Date, default: Date.now },
