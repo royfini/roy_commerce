@@ -1,14 +1,19 @@
 import mongoose from "mongoose";
 import { Supplier } from "./supplier";
+import { Product } from "./product";
+import { Stock } from "./stock";
+import { BadRequestError } from "../errors/bad-request-error";
 
 interface PurchaseAttrs {
   user: string;
   supplier: string;
   purchaseDate: Date;
   totalPrice: number;
+  status: string;
   products: Array<{
     product: mongoose.Types.ObjectId;
     quantity: number;
+    previousQuantity?: number;
     totalPrice?: number;
   }>;
 }
@@ -18,9 +23,11 @@ interface PurshaseDoc extends mongoose.Document {
   supplier: string;
   purchaseDate: Date;
   totalPrice: number;
+  status: string;
   products: Array<{
     product: mongoose.Types.ObjectId;
     quantity: number;
+    previousQuantity?: number;
     totalPrice?: number;
   }>;
 }
@@ -33,10 +40,12 @@ const purchaseSchema = new mongoose.Schema(
     supplier: { type: mongoose.Schema.Types.ObjectId, ref: "Supplier" },
     purchaseDate: { type: Date },
     totalPrice: { type: Number },
+    status: { type: String,enum:["draft", "saved"], default: "draft"},
     products: [
       {
         product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
         quantity: { type: Number },
+        previousQuantity: { type: Number, default: 0 }, // To store the old quantity
         totalPrice: { type: Number },
       },
     ],

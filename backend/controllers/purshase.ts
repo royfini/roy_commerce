@@ -6,6 +6,7 @@ import { Product } from "../models/product";
 import mongoose from "mongoose";
 import { io } from "../app";
 import { Stock } from "../models/stock";
+import { BadRequestError } from "../errors/bad-request-error";
 
 const createPurchase = async (req: Request, res: Response) => {
   const newPurshase = new Purshase();
@@ -56,7 +57,7 @@ const addProductToPurhase = async (req: Request, res: Response) => {
   );
 
   if (existingProduct) {
-    existingProduct.quantity += 1;
+    res.send("Product already added to purshase");
   } else {
     purshase.products.push({
       product: productObjectId,
@@ -103,11 +104,12 @@ const addProductQuantity = async (req: Request, res: Response) => {
   );
 
   if (existingProduct) {
+    existingProduct.previousQuantity = existingProduct.quantity;
     existingProduct.quantity += 1;
   } else {
     throw new NotFoundError();
   }
-
+  purshase.status = "draft";
   await purshase.save();
   const populatedPurshase = await purshase.populate("products.product");
   if (req.currentUser) {
@@ -131,13 +133,14 @@ const removeProductQuantity = async (req: Request, res: Response) => {
   );
 
   if (existingProduct) {
+    existingProduct.previousQuantity = existingProduct.quantity;
     if (existingProduct.quantity > 0) {
       existingProduct.quantity -= 1;
     }
   } else {
     throw new NotFoundError();
   }
-
+  purshase.status = "draft";
   await purshase.save();
   const populatedPurshase = await purshase.populate("products.product");
   if (req.currentUser) {
@@ -155,10 +158,17 @@ const savePurshase = async (req: Request, res: Response) => {
     throw new NotFoundError();
   }
 
+  if (purshase.status === "saved") {
+    throw new BadRequestError("Purchase is already saved.");
+  }
+
   for (const product of purshase.products) {
     const stockProduct = await Stock.findOne({ productId: product.product });
     if (stockProduct) {
-      stockProduct.quantityInStock += product.quantity;
+      const quantityDifference = product.quantity - product.previousQuantity!;
+      stockProduct.quantityInStock += quantityDifference;
+      // Clear previousQuantity and mark as saved
+      product.previousQuantity = 0;
       await stockProduct.save();
     } else {
       // Handle case where product is not found in stock
@@ -166,6 +176,7 @@ const savePurshase = async (req: Request, res: Response) => {
     }
   }
   purshase.purchaseDate = new Date();
+  purshase.status = "saved";
   await purshase.save();
   res.send("Purshase saved and stock updated");
 };
@@ -176,7 +187,7 @@ export {
   addProductToPurhase,
   getAllPurshases,
   getAllProductOfPurchase,
+  savePurshase,
   addProductQuantity,
   removeProductQuantity,
-  savePurshase,
 };
