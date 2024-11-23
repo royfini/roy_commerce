@@ -8,8 +8,17 @@ import { Stock } from "../models/stock";
 import { Price } from "../models/price";
 
 export const addProduct = async (req: Request, res: Response) => {
-  const { name, description, categoryId, brandId, image, sellerPrice } =
-    req.body;
+  const {
+    name,
+    description,
+    categoryId,
+    brandId,
+    image,
+    sellerPrice,
+    type,
+    boxContent,
+    unitId,
+  } = req.body;
 
   const category = await Category.findById(categoryId);
   if (!category) {
@@ -32,6 +41,9 @@ export const addProduct = async (req: Request, res: Response) => {
     category: categoryId,
     brand: brandId,
     image,
+    type: type,
+    boxContent: boxContent,
+    unitId: unitId,
   });
   await product.save();
 

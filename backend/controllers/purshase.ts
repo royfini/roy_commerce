@@ -104,7 +104,9 @@ const addProductQuantity = async (req: Request, res: Response) => {
   );
 
   if (existingProduct) {
-    existingProduct.previousQuantity = existingProduct.quantity;
+    if(purshase.status === "saved") {
+      existingProduct.previousQuantity = existingProduct.quantity;
+    }
     existingProduct.quantity += 1;
   } else {
     throw new NotFoundError();
@@ -133,7 +135,9 @@ const removeProductQuantity = async (req: Request, res: Response) => {
   );
 
   if (existingProduct) {
-    existingProduct.previousQuantity = existingProduct.quantity;
+    if(purshase.status === "saved") {
+      existingProduct.previousQuantity = existingProduct.quantity;
+    }
     if (existingProduct.quantity > 0) {
       existingProduct.quantity -= 1;
     }
@@ -163,6 +167,10 @@ const savePurshase = async (req: Request, res: Response) => {
   }
 
   for (const product of purshase.products) {
+    const productInfo = await Product.findById(product.product);
+    if (!productInfo) {
+      throw new NotFoundError();
+    }
     const stockProduct = await Stock.findOne({ productId: product.product });
     if (stockProduct) {
       const quantityDifference = product.quantity - product.previousQuantity!;
@@ -170,6 +178,16 @@ const savePurshase = async (req: Request, res: Response) => {
       // Clear previousQuantity and mark as saved
       product.previousQuantity = 0;
       await stockProduct.save();
+      if (productInfo.type === "box") {
+        const unitProduct = await Stock.findOne({
+          productId: productInfo.unitId,
+        });
+        if (unitProduct) {
+          unitProduct.quantityInStock +=
+            quantityDifference * productInfo.boxContent!;
+          await unitProduct.save();
+        }
+      }
     } else {
       // Handle case where product is not found in stock
       throw new NotFoundError();

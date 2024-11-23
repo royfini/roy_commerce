@@ -128,17 +128,64 @@ const checkOut = async (req: Request, res: Response) => {
     throw new BadRequestError("Cart not found");
   }
   for (let i = 0; i < cart.products.length; i++) {
+    const product = await Product.findById(cart.products[i].product);
+    if (!product) {
+      throw new BadRequestError("Product not found");
+    }
     const productInStock = await Stock.findOne({
       productId: cart.products[i].product,
     });
     if (!productInStock) {
       throw new BadRequestError("Product not found in stock");
     }
-    //check product quantity available in stock
-    if (productInStock.quantityInStock < cart.products[i].quantity) {
-      throw new BadRequestError("Product out of stock");
+
+    // Check product quantity available in stock
+    if (product.type === "unit") {
+      const totalUnitsRequired = cart.products[i].quantity;
+      const boxContent = product.boxContent!;
+
+      if (productInStock.quantityInStock < totalUnitsRequired) {
+        throw new BadRequestError("Product out of stock");
+      }
+      productInStock.quantityInStock -= totalUnitsRequired;
+
+      // Check if we need to decrease box quantity
+      // if (boxContent > 0) {
+      //   const boxesToDecrease = Math.floor(totalUnitsRequired / boxContent);
+      //   if (boxesToDecrease > 0) {
+      //     const boxProductInStock = await Stock.findOne({
+      //       productId: product.boxId,
+      //     });
+      //     if (!boxProductInStock) {
+      //       throw new BadRequestError("Box product not found in stock");
+      //     }
+      //     if (boxProductInStock.quantityInStock < boxesToDecrease) {
+      //       throw new BadRequestError("Box product out of stock");
+      //     }
+      //     boxProductInStock.quantityInStock -= boxesToDecrease;
+      //     await boxProductInStock.save();
+      //   }
+      // }
+    } else if (product.type === "box") {
+      const totalUnitsRequired =
+        cart.products[i].quantity * product.boxContent!;
+      if (productInStock.quantityInStock < cart.products[i].quantity) {
+        throw new BadRequestError("Product out of stock");
+      }
+      productInStock.quantityInStock -= cart.products[i].quantity;
+
+      const unitProductInStock = await Stock.findOne({
+        productId: product.unitId,
+      });
+      if (!unitProductInStock) {
+        throw new BadRequestError("Unit product not found in stock");
+      }
+      if (unitProductInStock.quantityInStock < totalUnitsRequired) {
+        throw new BadRequestError("Unit product out of stock");
+      }
+      unitProductInStock.quantityInStock -= totalUnitsRequired;
+      await unitProductInStock.save();
     }
-    productInStock.quantityInStock -= cart.products[i].quantity;
     await productInStock.save();
   }
   const expiration = new Date();
@@ -156,7 +203,7 @@ const checkOut = async (req: Request, res: Response) => {
     totalPrice: cart.totalPrice,
   });
   await order.save();
-  console.log("Order id:"+order.id)
+  console.log("Order id:" + order.id);
 
   await expirationQueue.add(
     {

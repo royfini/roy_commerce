@@ -9,6 +9,9 @@ interface ProductAttrs {
   category: CategoryDoc;
   brand: BrandDoc;
   image: string;
+  type: string;
+  boxContent?: number;
+  unitId?: mongoose.Types.ObjectId;
 }
 
 interface ProductDoc extends mongoose.Document {
@@ -17,6 +20,9 @@ interface ProductDoc extends mongoose.Document {
   category: string;
   brand: string;
   image: string;
+  type: string;
+  boxContent?: number;
+  unitId?: mongoose.Types.ObjectId;
 }
 
 interface ProductModel extends mongoose.Model<ProductDoc> {
@@ -29,6 +35,9 @@ const produtSchema = new mongoose.Schema({
   category: { type: mongoose.Schema.Types.ObjectId, ref: "Category" },
   brand: { type: mongoose.Schema.Types.ObjectId, ref: "Brand" },
   image: { type: String },
+  type: { type: String, enum: ["box", "unit"], required: true }, // Differentiates box and unit
+  boxContent: { type: Number, default: 0 }, // Number of units in the box; 0 for units
+  unitId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" }, // unit reference for box
 },
 {
   toJSON: {
