@@ -142,30 +142,41 @@ const checkOut = async (req: Request, res: Response) => {
     // Check product quantity available in stock
     if (product.type === "unit") {
       const totalUnitsRequired = cart.products[i].quantity;
-      const boxContent = product.boxContent!;
 
       if (productInStock.quantityInStock < totalUnitsRequired) {
         throw new BadRequestError("Product out of stock");
       }
       productInStock.quantityInStock -= totalUnitsRequired;
 
-      // Check if we need to decrease box quantity
-      // if (boxContent > 0) {
-      //   const boxesToDecrease = Math.floor(totalUnitsRequired / boxContent);
-      //   if (boxesToDecrease > 0) {
-      //     const boxProductInStock = await Stock.findOne({
-      //       productId: product.boxId,
-      //     });
-      //     if (!boxProductInStock) {
-      //       throw new BadRequestError("Box product not found in stock");
-      //     }
-      //     if (boxProductInStock.quantityInStock < boxesToDecrease) {
-      //       throw new BadRequestError("Box product out of stock");
-      //     }
-      //     boxProductInStock.quantityInStock -= boxesToDecrease;
-      //     await boxProductInStock.save();
-      //   }
-      // }
+      // Query for a box containing the given unit
+      const box = await Product.findOne({
+        type: "box",
+        unitId: product.id,
+      }).exec();
+
+      if (box) {
+        //Check if we need to decrease box quantity
+        if (box.boxContent! > 0) {
+          const boxesToDecrease = Math.ceil(
+            totalUnitsRequired / box.boxContent!
+          );
+          if (boxesToDecrease > 0) {
+            const boxProductInStock = await Stock.findOne({
+              productId: box.id,
+            });
+            if (!boxProductInStock) {
+              throw new BadRequestError("Box product not found in stock");
+            }
+            if (boxProductInStock.quantityInStock < boxesToDecrease) {
+              throw new BadRequestError("Box product out of stock");
+            }
+            boxProductInStock.quantityInStock -= boxesToDecrease;
+            await boxProductInStock.save();
+          }
+        }
+      } else {
+        console.log("No box contains this unit.");
+      }
     } else if (product.type === "box") {
       const totalUnitsRequired =
         cart.products[i].quantity * product.boxContent!;
