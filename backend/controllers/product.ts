@@ -57,7 +57,7 @@ export const addProduct = async (req: Request, res: Response) => {
   // Create and save the stock instance
   const stock = Stock.build({
     productId: product.id,
-    quantityInStock: 0, // Replace with the initial stock quantity
+    batch: [{}],
   });
 
   await stock.save();

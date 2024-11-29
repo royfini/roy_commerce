@@ -228,6 +228,8 @@ const checkOut = async (req: Request, res: Response) => {
   res.send("checkout successful");
 };
 
+
+
 export {
   AddProductToCart,
   addQtyProductOfCart,

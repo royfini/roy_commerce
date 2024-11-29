@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import { io } from "../app";
 import { Stock } from "../models/stock";
 import { BadRequestError } from "../errors/bad-request-error";
+import { Price } from "../models/price";
 
 const createPurchase = async (req: Request, res: Response) => {
   const newPurshase = new Purshase();
@@ -171,10 +172,19 @@ const savePurshase = async (req: Request, res: Response) => {
     if (!productInfo) {
       throw new NotFoundError();
     }
+    const productPrice = await Price.findById(product.product);
+    if(!productPrice) {
+      throw new NotFoundError();
+    }
     const stockProduct = await Stock.findOne({ productId: product.product });
     if (stockProduct) {
       const quantityDifference = product.quantity - product.previousQuantity!;
-      stockProduct.quantityInStock += quantityDifference;
+      //stockProduct.quantityInStock += quantityDifference;
+      stockProduct.batch?.push({
+        quantityInStock: quantityDifference,
+        expiryDate: new Date(),
+        purchasePrice: productPrice.purshasePrice? productPrice.purshasePrice : 0,
+      });
       // Clear previousQuantity and mark as saved
       product.previousQuantity = 0;
       await stockProduct.save();
@@ -183,8 +193,13 @@ const savePurshase = async (req: Request, res: Response) => {
           productId: productInfo.unitId,
         });
         if (unitProduct) {
-          unitProduct.quantityInStock +=
-            quantityDifference * productInfo.boxContent!;
+          // unitProduct.quantityInStock +=
+          //   quantityDifference * productInfo.boxContent!;
+          unitProduct.batch?.push({
+            quantityInStock: quantityDifference * productInfo.boxContent!,
+            expiryDate: new Date(),
+            purchasePrice: productPrice.purshasePrice? productPrice.purshasePrice : 0,
+          });
           await unitProduct.save();
         }
       }
