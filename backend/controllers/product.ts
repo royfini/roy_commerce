@@ -15,6 +15,7 @@ export const addProduct = async (req: Request, res: Response) => {
     brandId,
     image,
     sellerPrice,
+    purchasePrice,
     type,
     boxContent,
     unitId,
@@ -50,6 +51,7 @@ export const addProduct = async (req: Request, res: Response) => {
   const price = Price.build({
     product: product.id,
     sellerPrice,
+    purshasePrice: purchasePrice,
   });
 
   await price.save();
@@ -57,7 +59,8 @@ export const addProduct = async (req: Request, res: Response) => {
   // Create and save the stock instance
   const stock = Stock.build({
     productId: product.id,
-    batch: [{}],
+    quantityInStock: 0,
+    batch: [],
   });
 
   await stock.save();

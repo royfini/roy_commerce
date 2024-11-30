@@ -9,6 +9,9 @@ import {
   getAllPurshases,
   removeProductQuantity,
   savePurshase,
+  addProductExpiry,
+  addPurchase,
+  editPurchase,
 } from "../controllers/purshase";
 import { requireAuth } from "../middlewares/require-auth";
 import { isAdmin } from "../middlewares/isAdmin";
@@ -48,6 +51,12 @@ purchaseRouter.post(
   removeProductQuantity
 );
 
+purchaseRouter.post("/add-expiry/:id", requireAuth, isAdmin, addProductExpiry);
+
 purchaseRouter.post("/save/:id", requireAuth, isAdmin, savePurshase);
+
+purchaseRouter.post("/add/:id", requireAuth, isAdmin, addPurchase);
+
+purchaseRouter.post("/edit/:id", requireAuth, isAdmin, editPurchase);
 
 export { purchaseRouter };
