@@ -314,7 +314,6 @@ const addPurchase = async (req: Request, res: Response) => {
     throw new BadRequestError("Purchase not found");
   }
   purshase.products = products;
-  purshase.products = products;
   for (const product of products) {
     const productInfo = await Product.findById(product.product);
     if (!productInfo) {
@@ -348,6 +347,66 @@ const addPurchase = async (req: Request, res: Response) => {
           },
         }
       );
+    }
+    if (productInfo.type === "unit") {
+      const totalUnitsRequired = product.quantity;
+      console.log(totalUnitsRequired)
+      // Query for a box containing the given unit
+      const box = await Product.findOne({
+        type: "box",
+        unitId: product.product,
+      }).exec();
+      if (box) {
+        //Check if we need to decrease box quantity
+        if (box.boxContent! > 0) {
+          const boxesToDecrease = Math.floor(
+            totalUnitsRequired / box.boxContent!
+          );
+          console.log(box.boxContent)
+          if (boxesToDecrease > 0) {
+            const boxProductInStock = await Stock.findOne({
+              productId: box.id,
+            });
+            console.log(boxesToDecrease);
+            if (!boxProductInStock) {
+              throw new BadRequestError("Box product not found in stock");
+            }
+            const updated = await Stock.updateOne(
+              {
+                productId: box.id,
+                "batch.expiryDate": product.expiryDate,
+                "batch.purchasePrice":
+                  productPrice.purshasePrice! * box.boxContent!,
+              },
+              {
+                $inc: {
+                  "batch.$.quantityInStock": boxesToDecrease,
+                },
+              }
+            );
+            if (updated.matchedCount === 0) {
+              // If no matching batch, create a new one
+              const result = parseFloat(
+                (product.purchasePrice * box.boxContent!).toFixed(5)
+              );
+              await Stock.updateOne(
+                { productId: box.id },
+                {
+                  $push: {
+                    batch: {
+                      expiryDate: product.expiryDate,
+                      purchasePrice: result,
+                      quantityInStock: boxesToDecrease,
+                    },
+                  },
+                }
+              );
+            }
+          }
+        }
+      } else {
+        throw new BadRequestError("No box contains this unit.");
+      }
     }
     if (productInfo.type === "box") {
       const unitProduct = await Stock.findOne({
