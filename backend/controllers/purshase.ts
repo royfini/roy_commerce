@@ -314,6 +314,7 @@ const addPurchase = async (req: Request, res: Response) => {
     throw new BadRequestError("Purchase not found");
   }
   purshase.products = products;
+  purshase.products = products;
   for (const product of products) {
     const productInfo = await Product.findById(product.product);
     if (!productInfo) {
@@ -323,71 +324,72 @@ const addPurchase = async (req: Request, res: Response) => {
     if (!productPrice) {
       throw new BadRequestError("Price not found");
     }
-    const stockProduct = await Stock.findOne({ productId: product.product });
-    if (stockProduct) {
-      const quantityPurchase = purshase.products.find(
-        (p) => p.product.toString() === product.product
-      )?.quantity;
-      const quantityDifference = product.quantity - (quantityPurchase ?? 0);
+    // Step 2: Add or update stock with new purchase details
+    const updated = await Stock.updateOne(
+      {
+        productId: product.product,
+        "batch.expiryDate": product.expiryDate,
+        "batch.purchasePrice": productPrice.purshasePrice,
+      },
+      { $inc: { "batch.$.quantityInStock": product.quantity } }
+    );
 
-      stockProduct.quantityInStock += quantityDifference;
-      const batchIndex = stockProduct.batch?.findIndex(
-        (b) =>
-          b &&
-          b.purchasePrice === productPrice.purshasePrice &&
-          b.expiryDate === product.expiryDate
-      );
-
-      if (batchIndex !== -1) {
-        if (batchIndex !== undefined) {
-          if (stockProduct.batch && stockProduct.batch[batchIndex]) {
-            stockProduct.batch[batchIndex].expiryDate = product.expiryDate!;
-            stockProduct.batch[batchIndex].quantityInStock! +=
-              quantityDifference;
-          }
+    if (updated.matchedCount === 0) {
+      // If no matching batch, create a new one
+      await Stock.updateOne(
+        { productId: product.product },
+        {
+          $push: {
+            batch: {
+              expiryDate: product.expiryDate,
+              purchasePrice: productPrice.purshasePrice,
+              quantityInStock: product.quantity,
+            },
+          },
         }
-      } else {
-        stockProduct.batch?.push({
-          quantityInStock: quantityDifference,
-          expiryDate: product.expiryDate ? product.expiryDate : new Date(),
-          purchasePrice: productPrice.purshasePrice,
-        });
-      }
-      await stockProduct.save();
-      if (productInfo.type === "box") {
-        const unitProduct = await Stock.findOne({
-          productId: productInfo.unitId,
-        });
-        const unitProductPrice = await Price.findOne({
-          product: productInfo.unitId,
-        });
-        if (unitProduct && unitProductPrice) {
-          unitProduct.quantityInStock +=
-            quantityDifference * productInfo.boxContent!;
-
-          const batchIndex = stockProduct.batch?.findIndex(
-            (b) =>
-              b &&
-              b.purchasePrice === productPrice.purshasePrice &&
-              b.expiryDate === product.expiryDate
-          );
-
-          if (batchIndex !== -1) {
-            if (batchIndex !== undefined) {
-              if (unitProduct.batch && unitProduct.batch[batchIndex]) {
-                unitProduct.batch[batchIndex].expiryDate = product.expiryDate!;
-                unitProduct.batch[batchIndex].quantityInStock! +=
-                  quantityDifference * productInfo.boxContent!;
-              }
-            }
-          } else {
-            unitProduct.batch?.push({
-              quantityInStock: quantityDifference * productInfo.boxContent!,
-              expiryDate: product.expiryDate ? product.expiryDate : new Date(),
-              purchasePrice: unitProductPrice.purshasePrice,
-            });
+      );
+    }
+    if (productInfo.type === "box") {
+      const unitProduct = await Stock.findOne({
+        productId: productInfo.unitId,
+      });
+      const unitProductPrice = await Price.findOne({
+        product: productInfo.unitId,
+      });
+      if (unitProduct && unitProductPrice) {
+        const result = parseFloat(
+          (product.purchasePrice / productInfo.boxContent!).toFixed(5)
+        );
+        const updated = await Stock.updateOne(
+          {
+            productId: productInfo.unitId,
+            "batch.expiryDate": product.expiryDate,
+            "batch.purchasePrice": result,
+          },
+          {
+            $inc: {
+              "batch.$.quantityInStock":
+                product.quantity * productInfo.boxContent!,
+            },
           }
-          await unitProduct.save();
+        );
+        if (updated.matchedCount === 0) {
+          // If no matching batch, create a new one
+          const result = parseFloat(
+            (product.purchasePrice / productInfo.boxContent!).toFixed(5)
+          );
+          await Stock.updateOne(
+            { productId: productInfo.unitId },
+            {
+              $push: {
+                batch: {
+                  expiryDate: product.expiryDate,
+                  purchasePrice: result,
+                  quantityInStock: product.quantity * productInfo.boxContent!,
+                },
+              },
+            }
+          );
         }
       }
     }
@@ -398,60 +400,163 @@ const addPurchase = async (req: Request, res: Response) => {
 
 const editPurchase = async (req: Request, res: Response) => {
   const { products } = req.body;
-  const purshase = await Purshase.findById(req.params.id);
+  const originalPurchase = await Purshase.findById(req.params.id);
 
-  if (!purshase) {
+  if (!originalPurchase) {
     throw new BadRequestError("Purchase not found");
   }
 
-  for (const newProduct of products) {
-    const existingProduct = purshase.products.find(
-      (p) => p.product.toString() === newProduct.product.toString()
+  for (const product of originalPurchase.products) {
+    const productInfo = await Product.findById(product.product);
+    if (!productInfo) {
+      throw new BadRequestError("Product not found");
+    }
+    // Step 1: Reverse original purchase
+    const formattedExpiryDate = new Date(product.expiryDate!).toISOString();
+    const stockUpdateResult = await Stock.updateOne(
+      {
+        productId: product.product,
+        "batch.expiryDate": formattedExpiryDate,
+        "batch.purchasePrice": product.purchasePrice,
+      },
+      { $inc: { "batch.$.quantityInStock": -product.quantity } }
     );
 
-    if (existingProduct) {
-      const stockProduct = await Stock.findOne({ productId: newProduct.product });
-      if (!stockProduct) {
-        throw new BadRequestError("Product not found in stock");
+    if (stockUpdateResult.modifiedCount > 0) {
+      // Check if the batch now has quantityInStock = 0
+      await Stock.updateOne(
+        {
+          productId: product.product,
+          "batch.expiryDate": product.expiryDate,
+          "batch.purchasePrice": product.purchasePrice,
+          "batch.quantityInStock": 0,
+        },
+        {
+          $pull: {
+            batch: {
+              expiryDate: formattedExpiryDate,
+              purchasePrice: product.purchasePrice,
+            },
+          },
+        }
+      );
+    }
+    if (productInfo.type === "box") {
+      const unitProduct = await Stock.findOne({
+        productId: productInfo.unitId,
+      });
+      if (unitProduct) {
+        const result = parseFloat(
+          (product.purchasePrice! / productInfo.boxContent!).toFixed(5)
+        );
+        const stockUpdateResult = await Stock.updateOne(
+          {
+            productId: productInfo.unitId,
+            "batch.expiryDate": formattedExpiryDate,
+            "batch.purchasePrice": result,
+          },
+          {
+            $inc: {
+              "batch.$.quantityInStock":
+                -product.quantity * productInfo.boxContent!,
+            },
+          }
+        );
+        if (stockUpdateResult.modifiedCount > 0) {
+          // Check if the batch now has quantityInStock = 0
+          await Stock.updateOne(
+            {
+              productId: productInfo.unitId,
+              "batch.expiryDate": formattedExpiryDate,
+              "batch.purchasePrice": result,
+              "batch.quantityInStock": 0,
+            },
+            {
+              $pull: {
+                batch: {
+                  expiryDate: formattedExpiryDate,
+                  purchasePrice: result,
+                },
+              },
+            }
+          );
+        }
       }
-
-      const quantityDifference = newProduct.quantity - existingProduct.quantity;
-
-      // Update stock quantity
-      stockProduct.quantityInStock += quantityDifference;
-
-      // Update batch information
-      const batchIndex = stockProduct.batch?.findIndex(
-        (b) =>
-          b &&
-          b.purchasePrice === newProduct.purchasePrice &&
-          b.expiryDate === existingProduct.expiryDate
+    }
+    for (const product of products) {
+      const productInfo = await Product.findById(product.product);
+      if (!productInfo) {
+        throw new BadRequestError("Product not found");
+      }
+      const productPrice = await Price.findOne({ product: product.product });
+      if (!productPrice) {
+        throw new BadRequestError("Price not found");
+      }
+      // Step 2: Add or update stock with new purchase details
+      const formattedExpiryDate = new Date(product.expiryDate!).toISOString();
+      const updated = await Stock.updateOne(
+        {
+          productId: product.product,
+          "batch.expiryDate": formattedExpiryDate,
+          "batch.purchasePrice": productPrice.purshasePrice,
+        },
+        { $inc: { "batch.$.quantityInStock": product.quantity } }
       );
 
-      if (batchIndex !== -1 && batchIndex !== undefined) {
-        if (stockProduct.batch && stockProduct.batch[batchIndex]) {
-          stockProduct.batch[batchIndex].quantityInStock! -= existingProduct.quantity;
-          stockProduct.batch[batchIndex].quantityInStock! += newProduct.quantity;
-          stockProduct.batch[batchIndex].expiryDate = newProduct.expiryDate;
-        }
-      } else {
-        stockProduct.batch?.push({
-          quantityInStock: newProduct.quantity,
-          expiryDate: newProduct.expiryDate ? newProduct.expiryDate : new Date(),
-          purchasePrice: newProduct.purchasePrice,
-        });
+      if (updated.matchedCount === 0) {
+        // If no matching batch, create a new one
+        await Stock.updateOne(
+          { productId: product.product },
+          {
+            $push: {
+              batch: {
+                expiryDate: product.expiryDate,
+                purchasePrice: product.purchasePrice,
+                quantityInStock: product.quantity,
+              },
+            },
+          }
+        );
       }
-
-      await stockProduct.save();
-    } else {
-      throw new BadRequestError("Product not found in purchase");
+      if (productInfo.type === "box") {
+        const unitProduct = await Stock.findOne({
+          productId: productInfo.unitId,
+        });
+        if (unitProduct) {
+          const updated = await Stock.updateOne(
+            {
+              productId: productInfo.unitId,
+              "batch.expiryDate": formattedExpiryDate,
+              "batch.purchasePrice": product.purchasePrice
+                ? product.purchasePrice / productInfo.boxContent!
+                : 0,
+            },
+            {
+              $inc: {
+                "batch.$.quantityInStock":
+                  product.quantity * productInfo.boxContent!,
+              },
+            }
+          );
+          if (updated.matchedCount === 0) {
+            // If no matching batch, create a new one
+            await Stock.updateOne(
+              { productId: productInfo.unitId },
+              {
+                $push: {
+                  batch: {
+                    expiryDate: product.expiryDate,
+                    purchasePrice: product.purchasePrice,
+                    quantityInStock: product.quantity * productInfo.boxContent!,
+                  },
+                },
+              }
+            );
+          }
+        }
+      }
     }
   }
-
-  // Update purchase with new product details
-  purshase.products = products;
-  await purshase.save();
-
   res.send("Purchase updated successfully");
 };
 

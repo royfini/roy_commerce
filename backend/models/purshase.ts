@@ -16,6 +16,7 @@ interface PurchaseAttrs {
     previousQuantity?: number;
     totalPrice?: number;
     expiryDate?: Date;
+    purchasePrice?: number;
   }>;
 }
 
@@ -31,6 +32,7 @@ interface PurshaseDoc extends mongoose.Document {
     previousQuantity?: number;
     totalPrice?: number;
     expiryDate?: Date;
+    purchasePrice?: number;
   }>;
 }
 
@@ -50,6 +52,7 @@ const purchaseSchema = new mongoose.Schema(
         previousQuantity: { type: Number, default: 0 }, // To store the old quantity
         totalPrice: { type: Number },
         expiryDate: { type: Date },
+        purchasePrice: { type: Number },
       },
     ],
   },
