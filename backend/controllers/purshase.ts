@@ -348,9 +348,12 @@ const addPurchase = async (req: Request, res: Response) => {
         }
       );
     }
+    await Stock.updateOne(
+      { productId: product.product },
+      { $inc: { quantityInStock: product.quantity } }
+    );
     if (productInfo.type === "unit") {
       const totalUnitsRequired = product.quantity;
-      console.log(totalUnitsRequired)
       // Query for a box containing the given unit
       const box = await Product.findOne({
         type: "box",
@@ -359,24 +362,23 @@ const addPurchase = async (req: Request, res: Response) => {
       if (box) {
         //Check if we need to decrease box quantity
         if (box.boxContent! > 0) {
-          const boxesToDecrease = Math.floor(
-            totalUnitsRequired / box.boxContent!
-          );
-          console.log(box.boxContent)
+          const boxesToDecrease = totalUnitsRequired / box.boxContent!;
+
           if (boxesToDecrease > 0) {
             const boxProductInStock = await Stock.findOne({
               productId: box.id,
             });
-            console.log(boxesToDecrease);
             if (!boxProductInStock) {
               throw new BadRequestError("Box product not found in stock");
             }
+            const result = parseFloat(
+              (productPrice.purshasePrice! * box.boxContent!).toFixed(5)
+            );
             const updated = await Stock.updateOne(
               {
                 productId: box.id,
                 "batch.expiryDate": product.expiryDate,
-                "batch.purchasePrice":
-                  productPrice.purshasePrice! * box.boxContent!,
+                "batch.purchasePrice": result,
               },
               {
                 $inc: {
@@ -387,7 +389,7 @@ const addPurchase = async (req: Request, res: Response) => {
             if (updated.matchedCount === 0) {
               // If no matching batch, create a new one
               const result = parseFloat(
-                (product.purchasePrice * box.boxContent!).toFixed(5)
+                (productPrice.purshasePrice! * box.boxContent!).toFixed(5)
               );
               await Stock.updateOne(
                 { productId: box.id },
@@ -403,6 +405,10 @@ const addPurchase = async (req: Request, res: Response) => {
               );
             }
           }
+          await Stock.updateOne(
+            { productId: box.id },
+            { $inc: { quantityInStock: boxesToDecrease } }
+          );
         }
       } else {
         throw new BadRequestError("No box contains this unit.");
@@ -450,6 +456,14 @@ const addPurchase = async (req: Request, res: Response) => {
             }
           );
         }
+        await Stock.updateOne(
+          { productId: productInfo.unitId },
+          {
+            $inc: {
+              quantityInStock: product.quantity * productInfo.boxContent!,
+            },
+          }
+        );
       }
     }
   }
@@ -480,6 +494,12 @@ const editPurchase = async (req: Request, res: Response) => {
       },
       { $inc: { "batch.$.quantityInStock": -product.quantity } }
     );
+    await Stock.updateOne(
+      {
+        productId: product.product,
+      },
+      { $inc: { quantityInStock: -product.quantity } }
+    );
 
     if (stockUpdateResult.modifiedCount > 0) {
       // Check if the batch now has quantityInStock = 0
@@ -499,6 +519,71 @@ const editPurchase = async (req: Request, res: Response) => {
           },
         }
       );
+    }
+    if (productInfo.type === "unit") {
+      const totalUnitsRequired = product.quantity;
+      // Query for a box containing the given unit
+      const box = await Product.findOne({
+        type: "box",
+        unitId: product.product,
+      }).exec();
+      if (box) {
+        //Check if we need to decrease box quantity
+        if (box.boxContent! > 0) {
+          const boxesToDecrease = totalUnitsRequired / box.boxContent!;
+
+          if (boxesToDecrease > 0) {
+            const boxProductInStock = await Stock.findOne({
+              productId: box.id,
+            });
+            if (!boxProductInStock) {
+              throw new BadRequestError("Box product not found in stock");
+            }
+            const result = parseFloat(
+              (product.purchasePrice! * box.boxContent!).toFixed(5)
+            );
+            const updated = await Stock.updateOne(
+              {
+                productId: box.id,
+                "batch.expiryDate": formattedExpiryDate,
+                "batch.purchasePrice": result,
+              },
+              {
+                $inc: {
+                  "batch.$.quantityInStock": -boxesToDecrease,
+                },
+              }
+            );
+            if (updated.matchedCount > 0) {
+              // Check if the batch now has quantityInStock = 0
+              await Stock.updateOne(
+                {
+                  productId: box.id,
+                  "batch.expiryDate": formattedExpiryDate,
+                  "batch.purchasePrice": result,
+                  "batch.quantityInStock": 0,
+                },
+                {
+                  $pull: {
+                    batch: {
+                      expiryDate: formattedExpiryDate,
+                      purchasePrice: result,
+                    },
+                  },
+                }
+              );
+            }
+          }
+          await Stock.updateOne(
+            {
+              productId: box.id,
+            },
+            { $inc: { quantityInStock: -product.quantity } }
+          );
+        }
+      } else {
+        throw new BadRequestError("No box contains this unit.");
+      }
     }
     if (productInfo.type === "box") {
       const unitProduct = await Stock.findOne({
@@ -540,6 +625,12 @@ const editPurchase = async (req: Request, res: Response) => {
             }
           );
         }
+        await Stock.updateOne(
+          {
+            productId: productInfo.unitId,
+          },
+          { $inc: { quantityInStock: -product.quantity } }
+        );
       }
     }
     for (const product of products) {
